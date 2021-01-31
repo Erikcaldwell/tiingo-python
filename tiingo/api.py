@@ -165,7 +165,36 @@ class TiingoClient(RestClient):
                 return "tiingo/daily/{}/prices".format(ticker)
             else:
                 return "iex/{}/prices".format(ticker)
+    #######START ERIK EDITS ###########################################################
+    #Erik Caldwell adding new function for statement fundamentals data
+    def get_ticker_statement(self, ticker, fmt='json'):
+        """Return fundamentals for 1 ticker
+            Args:
+                ticker (str) : Unique identifier for stock
+        """
+        url = "tiingo/fundamentals/{}/statements".format(ticker)
+        response = self._request('GET', url)
+        data = response.json()
+        if fmt == 'json':
+            return data
+        elif fmt == 'object':
+            return dict_to_object(data, "Ticker")
 
+#Erik Caldwell adding new function for historical fundamentals data
+    def get_ticker_historical_fundamentals(self, ticker, fmt='json'):
+        """Return historical fundamentals for 1 ticker
+                Args:
+                    ticker (str) : Unique identifier for stock
+        """
+        url = "tiingo/fundamentals/{}/daily".format(ticker)
+        response = self._request('GET', url)
+        data = response.json()
+        if fmt == 'json':
+            return data
+        elif fmt == 'object':
+            return dict_to_object(data, "Ticker")
+
+###########END ERIK EDITS#################################################################
     def _request_pandas(self, ticker, metric_name, params):
         """
         Return data for ticker as a pandas.DataFrame if metric_name is not
