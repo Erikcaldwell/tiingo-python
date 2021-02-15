@@ -12,11 +12,9 @@ from zipfile import ZipFile
 import requests
 
 from tiingo.restclient import RestClient
-from tiingo.exceptions import (
-    InstallPandasException,
-    APIColumnNameError,
-    InvalidFrequencyError,
-    MissingRequiredArgumentError)
+from tiingo.exceptions import (InstallPandasException, APIColumnNameError,
+                               InvalidFrequencyError,
+                               MissingRequiredArgumentError)
 
 try:
     import pandas as pd
@@ -53,8 +51,8 @@ def dict_to_object(item, object_name):
     fields = item.keys()
     values = item.values()
     return json.loads(json.dumps(item),
-                      object_hook=lambda d:
-                      namedtuple(object_name, fields)(*values))
+                      object_hook=lambda d: namedtuple(object_name, fields)
+                      (*values))
 
 
 class TiingoClient(RestClient):
@@ -63,7 +61,6 @@ class TiingoClient(RestClient):
         Supply API Key via Environment Variable TIINGO_API_KEY
         or via the Config Object
     """
-
     def __init__(self, *args, **kwargs):
         super(TiingoClient, self).__init__(*args, **kwargs)
         self._base_url = "https://api.tiingo.com"
@@ -74,7 +71,7 @@ class TiingoClient(RestClient):
             api_key = os.environ.get('TIINGO_API_KEY')
         self._api_key = api_key
 
-        if not(api_key):
+        if not (api_key):
             raise RuntimeError("Tiingo API Key not provided. Please provide"
                                " via environment variable or config argument.")
 
@@ -84,12 +81,13 @@ class TiingoClient(RestClient):
             'User-Agent': 'tiingo-python-client {}'.format(VERSION)
         }
 
-        self._frequency_pattern = re.compile('^[0-9]+(min|hour)$', re.IGNORECASE)
+        self._frequency_pattern = re.compile('^[0-9]+(min|hour)$',
+                                             re.IGNORECASE)
 
     def __repr__(self):
         return '<TiingoClient(url="{}")>'.format(self._base_url)
 
-    def _is_eod_frequency(self,frequency):
+    def _is_eod_frequency(self, frequency):
         return frequency.lower() in ['daily', 'weekly', 'monthly', 'annually']
 
     # TICKER PRICE ENDPOINTS
@@ -112,8 +110,7 @@ class TiingoClient(RestClient):
             return [row for row in reader]
 
         assetTypesSet = set(assetTypes)
-        return [row for row in reader
-                if row.get('assetType') in assetTypesSet]
+        return [row for row in reader if row.get('assetType') in assetTypesSet]
 
     def list_stock_tickers(self):
         return self.list_tickers(['Stock'])
@@ -145,7 +142,8 @@ class TiingoClient(RestClient):
         :param frequency (string): frequency string
         :return (boolean):
         """
-        is_valid = self._is_eod_frequency(frequency) or re.match(self._frequency_pattern, frequency)
+        is_valid = self._is_eod_frequency(frequency) or re.match(
+            self._frequency_pattern, frequency)
         return not is_valid
 
     def _get_url(self, ticker, frequency):
@@ -157,18 +155,18 @@ class TiingoClient(RestClient):
         :return (string): url
         """
         if self._invalid_frequency(frequency):
-            etext = ("Error: {} is an invalid frequency.  Check Tiingo API documentation "
-                     "for valid EOD or intraday frequency format.")
+            etext = (
+                "Error: {} is an invalid frequency.  Check Tiingo API documentation "
+                "for valid EOD or intraday frequency format.")
             raise InvalidFrequencyError(etext.format(frequency))
         else:
             if self._is_eod_frequency(frequency):
                 return "tiingo/daily/{}/prices".format(ticker)
             else:
                 return "iex/{}/prices".format(ticker)
-    #######START ERIK EDITS ###########################################################
-    #Erik Caldwell adding new function for statement fundamentals data
+
     def get_ticker_statement(self, ticker, fmt='json'):
-        """Return fundamentals for 1 ticker
+        """Return statements for 1 ticker
             Args:
                 ticker (str) : Unique identifier for stock
         """
@@ -180,7 +178,6 @@ class TiingoClient(RestClient):
         elif fmt == 'object':
             return dict_to_object(data, "Ticker")
 
-#Erik Caldwell adding new function for historical fundamentals data
     def get_ticker_historical_fundamentals(self, ticker, fmt='json'):
         """Return historical fundamentals for 1 ticker
                 Args:
@@ -194,7 +191,22 @@ class TiingoClient(RestClient):
         elif fmt == 'object':
             return dict_to_object(data, "Ticker")
 
-###########END ERIK EDITS#################################################################
+    def get_ticker_fundamental_info(self, tickers=[]):
+        """Return metadata for a set of ticker symbols including permaticker
+                Args:
+                    tickers (list) : list of tickers to request fundamental metadata for
+        """
+        if len(tickers) > 5:
+            raise ValueError("Please limit to 5 tickers per call")
+
+        if len(tickers) == 0:
+            url = "tiingo/fundamentals/meta"
+        else:
+            url = f'tiingo/fundamentals/meta?tickers={",".join(tickers)}'
+
+        response = self._request('GET', url)
+        return response.json()
+
     def _request_pandas(self, ticker, metric_name, params):
         """
         Return data for ticker as a pandas.DataFrame if metric_name is not
@@ -236,9 +248,12 @@ class TiingoClient(RestClient):
 
         return prices
 
-    def get_ticker_price(self, ticker,
-                         startDate=None, endDate=None,
-                         fmt='json', frequency='daily'):
+    def get_ticker_price(self,
+                         ticker,
+                         startDate=None,
+                         endDate=None,
+                         fmt='json',
+                         frequency='daily'):
         """By default, return latest EOD Composite Price for a stock ticker.
            On average, each feed contains 3 data sources.
 
@@ -274,10 +289,13 @@ class TiingoClient(RestClient):
         else:
             return response.content.decode("utf-8")
 
-    def get_dataframe(self, tickers,
-                      startDate=None, endDate=None, metric_name=None,
-                      frequency='daily', fmt='json'):
-
+    def get_dataframe(self,
+                      tickers,
+                      startDate=None,
+                      endDate=None,
+                      metric_name=None,
+                      frequency='daily',
+                      fmt='json'):
         """ Return a pandas.DataFrame of historical prices for one or more ticker symbols.
 
             By default, return latest EOD Composite Price for a list of stock tickers.
@@ -299,20 +317,22 @@ class TiingoClient(RestClient):
                 fmt (string): 'csv' or 'json'
         """
 
-        valid_columns = {'open', 'high', 'low', 'close', 'volume', 'adjOpen', 'adjHigh', 'adjLow',
-                         'adjClose', 'adjVolume', 'divCash', 'splitFactor'}
+        valid_columns = {
+            'open', 'high', 'low', 'close', 'volume', 'adjOpen', 'adjHigh',
+            'adjLow', 'adjClose', 'adjVolume', 'divCash', 'splitFactor'
+        }
 
         if metric_name is not None and metric_name not in valid_columns:
-            raise APIColumnNameError('Valid data items are: ' + str(valid_columns))
+            raise APIColumnNameError('Valid data items are: ' +
+                                     str(valid_columns))
 
         if metric_name is None and isinstance(tickers, list):
-            raise MissingRequiredArgumentError("""When tickers is provided as a list, metric_name is a required argument.
-            Please provide a metric_name, or call this method with one ticker at a time.""")
+            raise MissingRequiredArgumentError(
+                """When tickers is provided as a list, metric_name is a required argument.
+            Please provide a metric_name, or call this method with one ticker at a time."""
+            )
 
-        params = {
-            'format': fmt,
-            'resampleFreq': frequency
-        }
+        params = {'format': fmt, 'resampleFreq': frequency}
         if startDate:
             params['startDate'] = startDate
         if endDate:
@@ -320,30 +340,41 @@ class TiingoClient(RestClient):
 
         if pandas_is_installed:
             if type(tickers) is str:
-                prices = self._request_pandas(
-                    ticker=tickers, params=params, metric_name=metric_name)
+                prices = self._request_pandas(ticker=tickers,
+                                              params=params,
+                                              metric_name=metric_name)
             else:
                 prices = pd.DataFrame()
                 for stock in tickers:
                     ticker_series = self._request_pandas(
                         ticker=stock, params=params, metric_name=metric_name)
                     ticker_series = ticker_series.rename(stock)
-                    prices = pd.concat([prices, ticker_series], axis=1, sort=True)
+                    prices = pd.concat([prices, ticker_series],
+                                       axis=1,
+                                       sort=True)
 
             return prices
 
         else:
-            error_message = ("Pandas is not installed, but .get_ticker_price() was "
-                             "called with fmt=pandas.  In order to install tiingo with "
-                             "pandas, reinstall with pandas as an optional dependency. \n"
-                             "Install tiingo with pandas dependency: \'pip install tiingo[pandas]\'\n"
-                             "Alternatively, just install pandas: pip install pandas.")
+            error_message = (
+                "Pandas is not installed, but .get_ticker_price() was "
+                "called with fmt=pandas.  In order to install tiingo with "
+                "pandas, reinstall with pandas as an optional dependency. \n"
+                "Install tiingo with pandas dependency: \'pip install tiingo[pandas]\'\n"
+                "Alternatively, just install pandas: pip install pandas.")
             raise InstallPandasException(error_message)
 
     # NEWS FEEDS
     # tiingo/news
-    def get_news(self, tickers=[], tags=[], sources=[], startDate=None,
-                 endDate=None, limit=100, offset=0, sortBy="publishedDate",
+    def get_news(self,
+                 tickers=[],
+                 tags=[],
+                 sources=[],
+                 startDate=None,
+                 endDate=None,
+                 limit=100,
+                 offset=0,
+                 sortBy="publishedDate",
                  onlyWithTickers=False,
                  fmt='json'):
         """Return list of news articles matching given search terms
@@ -400,12 +431,13 @@ class TiingoClient(RestClient):
 
     # Crypto
     # tiingo/crypto
-    def get_crypto_top_of_book(self, tickers=[], exchanges=[],
-                               includeRawExchangeData=False, convertCurrency=None):
+    def get_crypto_top_of_book(self,
+                               tickers=[],
+                               exchanges=[],
+                               includeRawExchangeData=False,
+                               convertCurrency=None):
         url = 'tiingo/crypto/top'
-        params = {
-            'tickers': ','.join(tickers)
-        }
+        params = {'tickers': ','.join(tickers)}
 
         if len(exchanges):
             params['exchanges'] = ','.join(exchanges)
@@ -417,14 +449,18 @@ class TiingoClient(RestClient):
         response = self._request('GET', url, params=params)
         return response.json()
 
-    def get_crypto_price_history(self, tickers=[], baseCurrency=None,
-                                 startDate=None, endDate=None, exchanges=[],
-                                 consolidateBaseCurrency=False, includeRawExchangeData=False,
-                                 resampleFreq=None, convertCurrency=None):
+    def get_crypto_price_history(self,
+                                 tickers=[],
+                                 baseCurrency=None,
+                                 startDate=None,
+                                 endDate=None,
+                                 exchanges=[],
+                                 consolidateBaseCurrency=False,
+                                 includeRawExchangeData=False,
+                                 resampleFreq=None,
+                                 convertCurrency=None):
         url = 'tiingo/crypto/prices'
-        params = {
-            'tickers': ','.join(tickers)
-        }
+        params = {'tickers': ','.join(tickers)}
 
         if startDate:
             params['startDate'] = startDate
@@ -433,7 +469,8 @@ class TiingoClient(RestClient):
         if len(exchanges):
             params['exchanges'] = ','.join(exchanges)
         if consolidateBaseCurrency is True:
-            params['consolidateBaseCurrency'] = ','.join(consolidateBaseCurrency)
+            params['consolidateBaseCurrency'] = ','.join(
+                consolidateBaseCurrency)
         if includeRawExchangeData is True:
             params['includeRawExchangeData'] = includeRawExchangeData
         if resampleFreq:
