@@ -183,6 +183,7 @@ class TiingoClient(RestClient):
                 Args:
                     ticker (str) : Unique identifier for stock
         """
+        ## Todo this should accept start and end date
         url = "tiingo/fundamentals/{}/daily".format(ticker)
         response = self._request('GET', url)
         data = response.json()
