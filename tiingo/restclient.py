@@ -49,6 +49,10 @@ class RestClient(object):
                                      headers=self._headers,
                                      **kwargs)
 
+        if len(resp.json()) == 0:
+            logging.error("No data returned.")
+            raise RestClientError("No data returned.")
+
         try:
             resp.raise_for_status()
         except HTTPError as e:
